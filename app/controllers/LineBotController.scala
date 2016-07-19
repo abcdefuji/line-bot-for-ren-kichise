@@ -1,5 +1,6 @@
 package controllers
 
+import play.api.libs.json.Json
 import play.api.mvc.Action
 import play.api.mvc.AnyContent
 import play.api.mvc.Results
@@ -7,6 +8,7 @@ import play.api.mvc.Results
 class LineBotController {
 
   def echo: Action[AnyContent] = Action { request =>
+    println(Json.prettyPrint(request.body.asJson.get))
     Results.Ok(views.html.index())
   }
 }
