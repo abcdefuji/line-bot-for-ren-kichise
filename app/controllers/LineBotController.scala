@@ -12,6 +12,8 @@ import play.api.mvc.Action
 import play.api.mvc._
 import scala.concurrent.ExecutionContext.Implicits.global
 import sun.misc.BASE64Encoder
+import values.EventType
+import values.WordType
 
 @Singleton
 class LineBotController @Inject()(ws: WSClient) {
@@ -20,19 +22,31 @@ class LineBotController @Inject()(ws: WSClient) {
 
     val content = (data.body \\ "content").head
     val exFrom = (content \ "from").get.as[String]
-    val exText = (content \ "text").get.as[String]
+    val text = WordType.of((content \ "text").get.as[String]).content
+    val exText = EventType.of((data.body \\ "eventType").head.as[String]) match {
+      case EventType.UserAction => WordType.Introduce.content
+      case _ => text
+    }
+
+    post(exFrom, exText).map { res =>
+      Logger.info(res.body.toString())
+      Results.Ok
+    }
+  }
+
+  private[this] def post(exFrom: String, exText: String) = {
 
     val body = Json.parse(
       s"""{
-         |  "to":["$exFrom"],
-         |  "toChannel":1383378250,
-         |  "eventType":"138311608800106203",
-         |  "content":{
-         |    "contentType":1,
-         |    "toType":1,
-         |    "text":"$exText"
-         |  }
-         |}
+          |  "to":["$exFrom"],
+          |  "toChannel":1383378250,
+          |  "eventType":"138311608800106203",
+          |  "content":{
+          |    "contentType":1,
+          |    "toType":1,
+          |    "text":"$exText"
+          |  }
+          |}
       """.stripMargin)
 
     val encodedAuth = new BASE64Encoder().encode(
@@ -54,58 +68,6 @@ class LineBotController @Inject()(ws: WSClient) {
           principal = Some("fixie"),
           password = Some("gbq3H6Vuqj71gXS")
         )
-      ).post(body).map { res =>
-      Logger.info(res.body.toString())
-      Results.Ok
-    }
+      ).post(body)
   }
 }
-
-case class LineMessage(
-  from: String,
-  fromChannel: String,
-  to: String,
-  toChannel: String,
-  eventType: EventType,
-  id: String,
-  content: String
-)
-
-case class EventType private(value: String)
-
-object EventType {
-  val ReceiveMessage = EventType("138311609000106303")
-  val UserAction = EventType("138311609100106403")
-  val SendSingleMessage = EventType("138311608800106203")
-  val SendMultiMessage = EventType("140177271400161403")
-}
-
-/**
-class App < Sinatra::Base
-  post '/linebot/callback' do
-    params = JSON.parse(request.body.read)
-
-    params['result'].each do |msg|
-      request_content = {
-        to: [msg['content']['from']],
-        toChannel: 1383378250, # Fixed  value
-        eventType: "138311608800106203", # Fixed value
-        content: msg['content']
-      }
-
-      endpoint_uri = 'https://trialbot-api.line.me/v1/events'
-      content_json = request_content.to_json
-
-      RestClient.proxy = ENV["FIXIE_URL"]
-      RestClient.post(endpoint_uri, content_json, {
-        'Content-Type' => 'application/json; charset=UTF-8',
-        'X-Line-ChannelID' => ENV["LINE_CHANNEL_ID"],
-        'X-Line-ChannelSecret' => ENV["LINE_CHANNEL_SECRET"],
-        'X-Line-Trusted-User-With-ACL' => ENV["LINE_CHANNEL_MID"],
-      })
-    end
-
-    "OK"
-  end
-end
-  */
