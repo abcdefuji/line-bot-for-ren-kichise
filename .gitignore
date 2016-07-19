@@ -1,0 +1,19 @@
+# IDE
+.idea/
+*.iml
+
+# play
+target/
+
+# log
+application.log
+event.log
+
+# sbt
+.sbtrc
+
+# Soymilk
+soymilk.log
+
+# ui
+node_modules
